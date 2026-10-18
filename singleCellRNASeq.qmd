@@ -1,0 +1,163 @@
+---
+title: "SingleCellRNASeq"
+author: "Sneha Gorla"
+date: 8-10-2026
+format: 
+  gfm:
+    toc: true
+    toc-depth: 2
+    fig-width: 7
+    fig-height: 5
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## 🧬 1. Objective
+
+Objective: learn the steps to go through the basic single cell RNA sequencing pipeline.
+
+------------------------------------------------------------------------
+
+## 📦 2. Setup and Library Activation
+
+We begin by loading the required libraries for the DE and the plots.
+
+```{r}
+#| label: load-libs
+library(dplyr)
+library(Seurat)
+```
+
+------------------------------------------------------------------------
+
+## 📥 3. Read in 10x Files
+
+The data sets needed are the barcodes, features, and the matrix which compose count matrix. These three files are stored in a single folder.
+
+```{r}
+#| label: data-mockup
+#| include: false
+
+D0R1 <- Read10X(data.dir = "Desktop/ChiLab/SingleRNAData/D0R1_filtered_gene_bc_matrices")
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 4. Construct the Seurat Object & Initial QC
+
+Using the counts matrix just created from the three files, create a Seurat object that is quality controlled, removing genes that are expressed in less than three cells and cells that express less than 200 genes.
+
+```{r}
+#| label: create-object
+D0R1obj <- CreateSeuratObject(counts = D0R1, min.cells = 3, min.features = 200, project = "D0R1")
+```
+
+------------------------------------------------------------------------
+
+## 📊 5. Further QC
+
+In order to do further QC, each cell is checked for percentage of mitochondrial genes expressed, total number of unique genes that a cell expresses, and the total number of unique molecular identifiers in the cells. By plotting these values in a violin plot, you can see where most of the data lies, and remove any outliers through the subset method.
+
+```{r}
+#| label: plot-pca
+D0R1obj[["percent.mt"]] <- PercentageFeatureSet(D0R1obj, pattern = "^MT-")
+
+#creates 3 violin plots of the data for different variables
+VlnPlot(D0R1obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+#creates a subset of the data based on cutoffs determined through the violin
+#plots
+D0R1obj <- subset(D0R1obj, subset = nFeature_RNA > 1250 & nFeature_RNA < 8750 & nCount_RNA < 75000 & percent.mt < 25)
+```
+
+------------------------------------------------------------------------
+
+## 📊 6. Normalization
+
+Then, normalize data through a log transformation so the data can be correctly scaled.
+
+```{r}
+#| label: dendrogram-and-volcano-plot
+D0R1obj <- NormalizeData(D0R1obj)
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 7. Find highly variable genes
+
+This step identifies the genes that have highly different expression between cells, which is one step in differentiating cell types within the sample.
+
+```{r}
+#| label: FindVariableFeatures
+D0R1obj <- FindVariableFeatures(D0R1obj, selection.method = "vst", nfeatures = 2000)
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 8. Scale Data
+
+Scaling the data shows cells that have higher than average, lower than average, or average expression of a gene.
+
+```{r}
+#| label: ScaleData
+D0R1obj <-ScaleData(D0R1obj)
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 9. Principal Component Analysis
+
+Here, the Principal Component Analysis is plotted. The PCs capture the largest to smallest sources of variation in the data, condensing large data sets and trends.
+
+```{r}
+#| label: PCA
+D0R1obj <- RunPCA(D0R1obj, features = VariableFeatures(object = D0R1obj))
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 10. Elbow Plot
+
+The elbow plot graphs the PC's to see where the sources of variation are no longer significant, so the dimensions could be determined later. The "elbow" or where the plot begins to flatten is when the sources of variation are no longer significant and can be ignored in future steps.
+
+```{r}
+#| label: ElbowPlot
+ElbowPlot(D0R1obj)
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 11. Find Neighbors
+
+The FindNeighbors method finds cells (neighbors) that have similar PC values, and are then likely to be part of the same cluster/ cell type. The dimensions determine how many PC's are kept in the comparison, here I kept all 20 as the elbow plot did not necessarily "flatten" and the sources of variation still seemed to be significant.
+
+```{r}
+#| label: FindNeighbors
+D0R1obj <- FindNeighbors(D0R1obj, dims = 1:20)
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 12. Find Clusters
+
+Using the network graph produced from Find Neighbors, Find Clusters now clusters the cells together, indicating which cells are part of the same cell type.
+
+```{r}
+#| label: FindClusters
+D0R1obj <- FindClusters(D0R1obj, resolution = 0.5)
+
+```
+
+------------------------------------------------------------------------
+
+## 🛠️ 13. Visualization
+
+UMAP uses the clusters created in Find Clusters, and allows us to visualize the clusters of cells. The UMAP does not actually perform any clustering, it just helps to visualize the already created clusters.
+
+```{r}
+#| label: UMAP
+D0R1obj <- RunUMAP(D0R1obj, dims = 1:20)
+DimPlot(D0R1obj, reduction = "umap", label = TRUE, group.by = "seurat_clusters")
+```
