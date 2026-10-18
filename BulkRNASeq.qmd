@@ -16,7 +16,11 @@ execute:
 
 ## 🧬 1. Objective
 
-Objective: learning the basic pipeline for using the Deseq2 library and finding the DEGs from the data set.
+Objective: learning the basic pipeline for using the DESeq library and finding the DEGs from the data set.
+
+Mentor: [Shaina Tran](https://www.linkedin.com/in/shaina-tran-5323aa128/?isSelfProfile=false), Bioinformatics Programmer, Neil C. Chi Lab
+
+Referenced the following tutorial: [DESeq2 Tutorial](https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
 
 ------------------------------------------------------------------------
 
@@ -104,7 +108,7 @@ sampleMetadata$replicateAdjusted <- factor(
 
 ## 🛠️ 4. Constructing the DESeq2 Object
 
-Using the adjusted metadata and original count data, I am now using the Deseq2 library to create the Deseq object and obtain results from the DE.
+Using the adjusted metadata and original count data, I am now using the DESeq library to create the DESeq object and obtain results from the DE.
 
 ```{r}
 #| label: create-dds
